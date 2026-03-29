@@ -20,10 +20,16 @@ const logoInput = document.getElementById('logo-input') as HTMLInputElement
 const logoLabel = document.getElementById('logo-label') as HTMLSpanElement
 const logoClearBtn = document.getElementById('logo-clear') as HTMLButtonElement
 const logoUploadBtn = document.querySelector('.logo-upload-btn') as HTMLLabelElement
+const mosaicInputGroup = document.getElementById('mosaic-input-group') as HTMLDivElement
+const mosaicInput = document.getElementById('mosaic-input') as HTMLInputElement
+const mosaicLabel = document.getElementById('mosaic-label') as HTMLSpanElement
+const mosaicClearBtn = document.getElementById('mosaic-clear') as HTMLButtonElement
+const mosaicUploadBtn = mosaicInputGroup.querySelector('.logo-upload-btn') as HTMLLabelElement
 
 let currentStyle: Style = 'classic'
 let currentTheme: ColorTheme = 'plasma'
 let currentLogo: ImageBitmap | null = null
+let currentMosaicImage: ImageBitmap | null = null
 
 // Pre-initialize expensive resources on page load
 // BarcodeDetector WASM init + char table measurement happen once, reused across generates
@@ -46,6 +52,7 @@ document.querySelectorAll<HTMLInputElement>('input[name="style"]').forEach((radi
   radio.addEventListener('change', () => {
     currentStyle = radio.value as Style
     calligramInputGroup.style.display = currentStyle === 'calligram' ? 'flex' : 'none'
+    mosaicInputGroup.style.display = currentStyle === 'mosaic' ? 'flex' : 'none'
   })
 })
 
@@ -78,6 +85,30 @@ logoClearBtn.addEventListener('click', () => {
   logoLabel.textContent = 'Choose Image'
   logoUploadBtn.classList.remove('has-logo')
   logoClearBtn.style.display = 'none'
+})
+
+// Mosaic photo upload
+mosaicInput.addEventListener('change', async () => {
+  const file = mosaicInput.files?.[0]
+  if (!file) return
+  try {
+    currentMosaicImage = await createImageBitmap(file)
+    mosaicLabel.textContent = file.name.length > 20 ? file.name.slice(0, 17) + '...' : file.name
+    mosaicUploadBtn.classList.add('has-logo')
+    mosaicClearBtn.style.display = 'block'
+  } catch {
+    mosaicLabel.textContent = 'Invalid image'
+    currentMosaicImage = null
+  }
+})
+
+mosaicClearBtn.addEventListener('click', () => {
+  currentMosaicImage?.close()
+  currentMosaicImage = null
+  mosaicInput.value = ''
+  mosaicLabel.textContent = 'Choose Photo'
+  mosaicUploadBtn.classList.remove('has-logo')
+  mosaicClearBtn.style.display = 'none'
 })
 
 // Generate button
@@ -116,6 +147,7 @@ generateBtn.addEventListener('click', async () => {
       setStatus,
       currentTheme,
       currentLogo ?? undefined,
+      currentMosaicImage ?? undefined,
     )
 
     const elapsed = Math.round(performance.now() - t0)

@@ -36,6 +36,10 @@
               <input type="radio" name="style" value="calligram" />
               <span>Calligram</span>
             </label>
+            <label class="radio-label">
+              <input type="radio" name="style" value="mosaic" />
+              <span>Mosaic</span>
+            </label>
           </div>
         </div>
 
@@ -62,6 +66,17 @@
               <input type="radio" name="theme" value="mono" />
               <span>Mono</span>
             </label>
+          </div>
+        </div>
+
+        <div class="input-group" id="mosaic-input-group" style="display: none;">
+          <label>Mosaic Photo</label>
+          <div class="logo-upload-row">
+            <label class="logo-upload-btn" for="mosaic-input">
+              <span id="mosaic-label">Choose Photo</span>
+              <input type="file" id="mosaic-input" accept="image/*" />
+            </label>
+            <button type="button" id="mosaic-clear" class="logo-clear-btn" style="display:none;">Clear</button>
           </div>
         </div>
 

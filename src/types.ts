@@ -1,4 +1,4 @@
-export type Style = 'classic' | 'typographic' | 'calligram'
+export type Style = 'classic' | 'typographic' | 'calligram' | 'mosaic'
 
 /** Color themes inspired by textflow */
 export type ColorTheme = 'plasma' | 'matrix' | 'lava' | 'aurora' | 'mono'
@@ -40,6 +40,8 @@ export interface RenderOptions {
   logoImage?: ImageBitmap
   /** Logo size as fraction of QR code (0-0.25, default 0.2) */
   logoScale?: number
+  /** Photo for mosaic mode — brightness drives character density */
+  mosaicImage?: ImageBitmap
 }
 
 export interface VerifyResult {

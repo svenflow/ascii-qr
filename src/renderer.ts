@@ -93,6 +93,12 @@ export function renderQR(
   let calligramIndex = 0
   const calligramText = (options.calligramText ?? 'HELLO').toUpperCase().replace(/\s+/g, '')
 
+  // Mosaic: sample photo brightness and color per module
+  let mosaicData: { brightness: number; r: number; g: number; b: number }[][] | null = null
+  if (options.style === 'mosaic' && options.mosaicImage) {
+    mosaicData = sampleMosaicImage(options.mosaicImage, totalSize)
+  }
+
   for (let row = 0; row < totalSize; row++) {
     for (let col = 0; col < totalSize; col++) {
       const isDark = modules[row][col]
@@ -100,7 +106,9 @@ export function renderQR(
       const y = row * moduleSize
       const structural = isStructuralModule(row, col, matrix)
 
-      if (options.style === 'classic' && theme === 'mono') {
+      if (options.style === 'mosaic' && mosaicData) {
+        renderMosaicCell(ctx, x, y, moduleSize, isDark, structural, contrastLevel, row, col, totalSize, theme, mosaicData)
+      } else if (options.style === 'classic' && theme === 'mono') {
         // Original monochrome classic
         renderClassicCell(ctx, x, y, moduleSize, isDark, structural, contrastLevel, tables.classic)
       } else if (options.style === 'classic') {
@@ -346,6 +354,92 @@ function getTypographicTable(
   if (neighbors >= 3) return tables.typographic800
   if (neighbors >= 1) return tables.typographic500
   return tables.typographic300
+}
+
+// --- Mosaic: photo-to-QR rendering ---
+
+function sampleMosaicImage(
+  img: ImageBitmap,
+  gridSize: number
+): { brightness: number; r: number; g: number; b: number }[][] {
+  // Draw image to offscreen canvas at grid resolution for sampling
+  const sampleCanvas = new OffscreenCanvas(gridSize, gridSize)
+  const sCtx = sampleCanvas.getContext('2d')!
+  sCtx.drawImage(img, 0, 0, gridSize, gridSize)
+  const imageData = sCtx.getImageData(0, 0, gridSize, gridSize)
+  const pixels = imageData.data
+
+  const grid: { brightness: number; r: number; g: number; b: number }[][] = []
+  for (let row = 0; row < gridSize; row++) {
+    grid[row] = []
+    for (let col = 0; col < gridSize; col++) {
+      const idx = (row * gridSize + col) * 4
+      const r = pixels[idx]
+      const g = pixels[idx + 1]
+      const b = pixels[idx + 2]
+      // Perceptual brightness (ITU-R BT.601)
+      const brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+      grid[row][col] = { brightness, r, g, b }
+    }
+  }
+  return grid
+}
+
+function renderMosaicCell(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, size: number,
+  isDark: boolean,
+  structural: boolean,
+  contrastLevel: number,
+  row: number, col: number, _totalSize: number,
+  _theme: ColorTheme,
+  mosaicData: { brightness: number; r: number; g: number; b: number }[][]
+): void {
+  const pixel = mosaicData[row]?.[col] ?? { brightness: 0.5, r: 128, g: 128, b: 128 }
+
+  if (!isDark) {
+    // Light module: use photo color at low opacity for a subtle tint
+    const tintAlpha = 0.08
+    ctx.fillStyle = `rgba(${pixel.r}, ${pixel.g}, ${pixel.b}, ${tintAlpha})`
+    ctx.fillRect(x, y, size, size)
+    return
+  }
+
+  if (structural) {
+    // Structural modules: use photo color but keep strong contrast
+    const structR = Math.round(pixel.r * 0.7 + 80)
+    const structG = Math.round(pixel.g * 0.7 + 80)
+    const structB = Math.round(pixel.b * 0.7 + 80)
+    ctx.fillStyle = `rgb(${structR}, ${structG}, ${structB})`
+    ctx.fillRect(x, y, size, size)
+    return
+  }
+
+  // Pick character from density ramp based on photo brightness
+  // Dark photo areas → dense chars, light areas → sparse chars
+  const density = (1 - pixel.brightness) * contrastLevel
+  const charIdx = Math.floor(density * (RAMP_DENSE.length - 1))
+  const char = RAMP_DENSE[Math.min(charIdx, RAMP_DENSE.length - 1)]
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, size, size)
+  ctx.clip()
+
+  // Use the photo's actual color for the character
+  const lumBoost = 1.2 // Slightly brighter for visibility
+  const cr = Math.min(255, Math.round(pixel.r * lumBoost))
+  const cg = Math.min(255, Math.round(pixel.g * lumBoost))
+  const cb = Math.min(255, Math.round(pixel.b * lumBoost))
+  ctx.fillStyle = `rgb(${cr}, ${cg}, ${cb})`
+
+  const fontSize = Math.round(size * 0.9)
+  ctx.font = `700 ${fontSize}px "JetBrains Mono", monospace`
+  ctx.textBaseline = 'middle'
+  ctx.textAlign = 'center'
+  ctx.fillText(char, x + size / 2, y + size / 2)
+
+  ctx.restore()
 }
 
 // --- Logo overlay ---

@@ -33,7 +33,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nichochar/ascii-qr"
+    "url": "https://github.com/svenflow/ascii-qr"
   },
   "devDependencies": {
     "@types/qrcode": "^1.5.6",

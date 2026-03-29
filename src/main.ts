@@ -144,6 +144,10 @@ downloadBtn.addEventListener('click', () => {
 })
 
 function setStatus(text: string, className: string): void {
-  statusEl.textContent = text
+  if (className === 'success') {
+    statusEl.innerHTML = `<span class="success-badge"><span class="check">\u2713</span>${text}</span>`
+  } else {
+    statusEl.textContent = text
+  }
   statusEl.className = `status ${className}`
 }

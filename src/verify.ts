@@ -1,0 +1,112 @@
+import { BarcodeDetector } from 'barcode-detector/ponyfill'
+import type { QRMatrix, Style, VerifyResult, CharTables } from './types'
+import { renderQR, renderReferenceQR } from './renderer'
+
+const CONTRAST_LEVELS = [0.7, 0.85, 1.0] as const
+
+/**
+ * Verify that a rendered QR code on a canvas can be decoded to the expected URL.
+ */
+async function scanCanvas(canvas: HTMLCanvasElement, expectedUrl: string): Promise<boolean> {
+  try {
+    const detector = new BarcodeDetector({ formats: ['qr_code'] })
+    const bmp = await createImageBitmap(canvas)
+    const results = await detector.detect(bmp)
+    bmp.close()
+
+    for (const result of results) {
+      if (result.rawValue === expectedUrl) return true
+    }
+    return false
+  } catch (e) {
+    console.error('BarcodeDetector error:', e)
+    return false
+  }
+}
+
+/**
+ * Generate and verify a QR code with automatic retry and contrast escalation.
+ *
+ * Attempts rendering at increasing contrast levels. If all fail for the requested
+ * style, falls back to Classic mode which is guaranteed to scan.
+ */
+export async function generateAndVerify(
+  canvas: HTMLCanvasElement,
+  matrix: QRMatrix,
+  tables: CharTables,
+  url: string,
+  style: Style,
+  calligramText?: string,
+  moduleSize?: number,
+  onStatus?: (status: string, className: string) => void,
+): Promise<VerifyResult> {
+  const debug = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).has('debug')
+    : false
+
+  // Try the requested style at increasing contrast levels
+  for (let i = 0; i < CONTRAST_LEVELS.length; i++) {
+    const contrastLevel = CONTRAST_LEVELS[i]
+    onStatus?.(
+      `Rendering (contrast ${Math.round(contrastLevel * 100)}%)...`,
+      'generating'
+    )
+
+    renderQR(canvas, matrix, tables, {
+      style,
+      contrastLevel,
+      calligramText,
+      moduleSize,
+      debug,
+    })
+
+    onStatus?.('Verifying scan...', 'verifying')
+
+    const scans = await scanCanvas(canvas, url)
+    if (scans) {
+      return {
+        scans: true,
+        decodedValue: url,
+        contrastLevel,
+        attempts: i + 1,
+        fellBack: false,
+      }
+    }
+  }
+
+  // Fallback: try classic at max contrast
+  if (style !== 'classic') {
+    onStatus?.('Falling back to classic...', 'fallback')
+
+    renderQR(canvas, matrix, tables, {
+      style: 'classic',
+      contrastLevel: 1.0,
+      moduleSize,
+      debug,
+    })
+
+    const scans = await scanCanvas(canvas, url)
+    if (scans) {
+      return {
+        scans: true,
+        decodedValue: url,
+        contrastLevel: 1.0,
+        attempts: CONTRAST_LEVELS.length + 1,
+        fellBack: true,
+      }
+    }
+  }
+
+  // Ultimate fallback: plain solid-square reference QR
+  onStatus?.('Using reference QR...', 'fallback')
+  renderReferenceQR(canvas, matrix, moduleSize)
+
+  const scans = await scanCanvas(canvas, url)
+  return {
+    scans,
+    decodedValue: scans ? url : null,
+    contrastLevel: 1.0,
+    attempts: CONTRAST_LEVELS.length + 2,
+    fellBack: true,
+  }
+}

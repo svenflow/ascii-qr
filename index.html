@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ASCII QR — Typographic QR Code Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Georgia&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>ASCII QR</h1>
+        <p class="subtitle">Typographic QR codes that actually scan</p>
+      </header>
+
+      <div class="controls">
+        <div class="input-group">
+          <label for="url-input">URL</label>
+          <input type="text" id="url-input" placeholder="https://example.com" value="https://example.com" />
+        </div>
+
+        <div class="input-group">
+          <label>Style</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="style" value="classic" checked />
+              <span>Classic</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="style" value="typographic" />
+              <span>Typographic</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="style" value="calligram" />
+              <span>Calligram</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="input-group" id="calligram-input-group" style="display: none;">
+          <label for="calligram-text">Fill Text</label>
+          <input type="text" id="calligram-text" placeholder="YOUR BRAND" value="HELLO WORLD" />
+        </div>
+
+        <button id="generate-btn">Generate</button>
+      </div>
+
+      <div id="output-area" style="display: none;">
+        <div id="status" class="status"></div>
+        <div class="canvas-wrapper">
+          <canvas id="qr-canvas"></canvas>
+        </div>
+        <div class="export-buttons">
+          <button id="copy-btn">Copy to Clipboard</button>
+          <button id="download-btn">Download PNG</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

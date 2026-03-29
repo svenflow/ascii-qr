@@ -1,15 +1,33 @@
 import { BarcodeDetector } from 'barcode-detector/ponyfill'
-import type { QRMatrix, Style, VerifyResult, CharTables } from './types'
+import type { QRMatrix, Style, VerifyResult, CharTables, ColorTheme } from './types'
 import { renderQR, renderReferenceQR } from './renderer'
 
 const CONTRAST_LEVELS = [0.7, 0.85, 1.0] as const
+
+// Cached detector instance — WASM init is expensive, only do it once
+let cachedDetector: InstanceType<typeof BarcodeDetector> | null = null
+
+async function getDetector(): Promise<InstanceType<typeof BarcodeDetector>> {
+  if (!cachedDetector) {
+    cachedDetector = new BarcodeDetector({ formats: ['qr_code'] })
+  }
+  return cachedDetector
+}
+
+/**
+ * Pre-initialize the BarcodeDetector so first scan is instant.
+ * Call this on page load.
+ */
+export async function initDetector(): Promise<void> {
+  await getDetector()
+}
 
 /**
  * Verify that a rendered QR code on a canvas can be decoded to the expected URL.
  */
 async function scanCanvas(canvas: HTMLCanvasElement, expectedUrl: string): Promise<boolean> {
   try {
-    const detector = new BarcodeDetector({ formats: ['qr_code'] })
+    const detector = await getDetector()
     const bmp = await createImageBitmap(canvas)
     const results = await detector.detect(bmp)
     bmp.close()
@@ -39,6 +57,7 @@ export async function generateAndVerify(
   calligramText?: string,
   moduleSize?: number,
   onStatus?: (status: string, className: string) => void,
+  colorTheme?: ColorTheme,
 ): Promise<VerifyResult> {
   const debug = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).has('debug')
@@ -58,6 +77,7 @@ export async function generateAndVerify(
       calligramText,
       moduleSize,
       debug,
+      colorTheme,
     })
 
     onStatus?.('Verifying scan...', 'verifying')
@@ -83,6 +103,7 @@ export async function generateAndVerify(
       contrastLevel: 1.0,
       moduleSize,
       debug,
+      colorTheme,
     })
 
     const scans = await scanCanvas(canvas, url)

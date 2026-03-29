@@ -1,13 +1,61 @@
-import type { QRMatrix, RenderOptions, CharTable, CharTables } from './types'
+import type { QRMatrix, RenderOptions, CharTable, CharTables, ColorTheme } from './types'
 import { isStructuralModule, countDarkNeighbors } from './qr'
 import { findBestChar } from './chars'
 
 const DEFAULT_MODULE_SIZE = 16
 
+// Textflow-inspired density ramp: light → heavy visual weight
+const RAMP_DENSE = ' .`-:;=+*#%@$'
+
 function getContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const ctx = canvas.getContext('2d', { willReadFrequently: false })
   if (!ctx) throw new Error('Could not get 2D canvas context — is this a valid canvas element?')
   return ctx
+}
+
+// --- Color theme functions ---
+// Each returns [h, s, l] for a given cell position
+
+interface ThemeColor { h: number; s: number; l: number }
+
+const THEME_FUNCTIONS: Record<ColorTheme, (row: number, col: number, totalSize: number, isDark: boolean) => ThemeColor> = {
+  plasma: (row, col, totalSize) => {
+    const nx = col / totalSize
+    const ny = row / totalSize
+    const v = (Math.sin(nx * 8 + ny * 3) + Math.sin(ny * 7 - nx * 2) + Math.sin((nx + ny) * 5)) / 3
+    const h = ((v * 0.5 + 0.5) * 270 + col * 3 + row * 2) % 360
+    return { h, s: 80, l: 55 }
+  },
+  matrix: (_row, _col) => {
+    return { h: 120, s: 90, l: 50 + Math.random() * 15 }
+  },
+  lava: (row, col, totalSize) => {
+    const nx = col / totalSize
+    const ny = row / totalSize
+    const v = (Math.sin(nx * 6 + ny * 4) + Math.sin(ny * 8)) / 2 * 0.5 + 0.5
+    const h = 10 + v * 40 // 10-50: red → orange → yellow
+    return { h, s: 90, l: 40 + v * 25 }
+  },
+  aurora: (row, col, totalSize) => {
+    const ny = row / totalSize
+    const nx = col / totalSize
+    const wave = Math.sin(nx * 6 + ny * 2) * 0.5 + 0.5
+    const h = 120 + wave * 160 // green → cyan → purple
+    return { h, s: 70, l: 45 + wave * 20 }
+  },
+  mono: () => {
+    return { h: 0, s: 0, l: 85 }
+  },
+}
+
+function getStructuralColor(theme: ColorTheme): string {
+  switch (theme) {
+    case 'plasma': return 'hsl(280, 100%, 75%)'
+    case 'matrix': return 'hsl(120, 100%, 70%)'
+    case 'lava': return 'hsl(40, 100%, 70%)'
+    case 'aurora': return 'hsl(160, 90%, 70%)'
+    case 'mono': return '#ffffff'
+  }
 }
 
 /**
@@ -22,6 +70,7 @@ export function renderQR(
   const moduleSize = options.moduleSize ?? DEFAULT_MODULE_SIZE
   const { totalSize, modules } = matrix
   const canvasSize = totalSize * moduleSize
+  const theme: ColorTheme = options.colorTheme ?? 'mono'
 
   canvas.width = canvasSize
   canvas.height = canvasSize
@@ -29,15 +78,16 @@ export function renderQR(
   const ctx = getContext(canvas)
   ctx.imageSmoothingEnabled = false
 
-  // Fill background
-  if (options.style === 'typographic') {
-    ctx.fillStyle = '#0a0a0a'
-  } else {
+  // Always dark background for colored modes, white for classic
+  if (options.style === 'classic' && theme === 'mono') {
     ctx.fillStyle = '#ffffff'
+  } else {
+    ctx.fillStyle = '#0a0a0f' // textflow's deep near-black
   }
   ctx.fillRect(0, 0, canvasSize, canvasSize)
 
   const { contrastLevel } = options
+  const themeFunc = THEME_FUNCTIONS[theme]
 
   // Calligram state
   let calligramIndex = 0
@@ -50,15 +100,20 @@ export function renderQR(
       const y = row * moduleSize
       const structural = isStructuralModule(row, col, matrix)
 
-      if (options.style === 'classic') {
+      if (options.style === 'classic' && theme === 'mono') {
+        // Original monochrome classic
         renderClassicCell(ctx, x, y, moduleSize, isDark, structural, contrastLevel, tables.classic)
+      } else if (options.style === 'classic') {
+        // Colored classic: solid color blocks
+        renderColoredClassicCell(ctx, x, y, moduleSize, isDark, structural, contrastLevel, row, col, totalSize, theme, themeFunc)
       } else if (options.style === 'typographic') {
         const table = getTypographicTable(row, col, isDark, structural, matrix, tables)
-        renderTypographicCell(ctx, x, y, moduleSize, isDark, structural, contrastLevel, table)
+        renderColoredTypographicCell(ctx, x, y, moduleSize, isDark, structural, contrastLevel, table, row, col, totalSize, theme, themeFunc)
       } else if (options.style === 'calligram') {
-        const result = renderCalligramCell(
+        const result = renderColoredCalligramCell(
           ctx, x, y, moduleSize, isDark, structural, contrastLevel,
-          tables.typographic800, calligramText, calligramIndex
+          tables.typographic800, calligramText, calligramIndex,
+          row, col, totalSize, theme, themeFunc
         )
         calligramIndex = result.nextIndex
       }
@@ -102,7 +157,7 @@ export function renderReferenceQR(
   }
 }
 
-// --- Cell renderers ---
+// --- Classic monochrome (original) ---
 
 function renderClassicCell(
   ctx: CanvasRenderingContext2D,
@@ -112,24 +167,20 @@ function renderClassicCell(
   contrastLevel: number,
   table: CharTable
 ): void {
-  // White background for classic mode
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(x, y, size, size)
 
   if (!isDark) return
 
   if (structural) {
-    // Solid black for structural modules
     ctx.fillStyle = '#000000'
     ctx.fillRect(x, y, size, size)
     return
   }
 
-  // Find character with target density
   const targetDensity = contrastLevel
   const charInfo = findBestChar(table, targetDensity, size)
 
-  // Clip to cell bounds
   ctx.save()
   ctx.beginPath()
   ctx.rect(x, y, size, size)
@@ -144,24 +195,67 @@ function renderClassicCell(
   ctx.restore()
 }
 
-function renderTypographicCell(
+// --- Colored classic: solid colored blocks with density char ---
+
+function renderColoredClassicCell(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, size: number,
   isDark: boolean,
   structural: boolean,
   contrastLevel: number,
-  table: CharTable
+  row: number, col: number, totalSize: number,
+  theme: ColorTheme,
+  themeFunc: (r: number, c: number, t: number, d: boolean) => ThemeColor
 ): void {
-  if (!isDark) return // dark background already drawn
+  if (!isDark) return // dark bg already drawn
 
   if (structural) {
-    // Bright white for structural modules on dark bg
-    ctx.fillStyle = '#ffffff'
+    ctx.fillStyle = getStructuralColor(theme)
     ctx.fillRect(x, y, size, size)
     return
   }
 
-  // Light text on dark background
+  const { h, s, l } = themeFunc(row, col, totalSize, true)
+  const charIdx = Math.floor(contrastLevel * (RAMP_DENSE.length - 1))
+  const char = RAMP_DENSE[Math.min(charIdx, RAMP_DENSE.length - 1)]
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, size, size)
+  ctx.clip()
+
+  ctx.fillStyle = `hsl(${h}, ${s}%, ${l}%)`
+  const fontSize = Math.round(size * 0.9)
+  ctx.font = `700 ${fontSize}px "JetBrains Mono", monospace`
+  ctx.textBaseline = 'middle'
+  ctx.textAlign = 'center'
+  ctx.fillText(char, x + size / 2, y + size / 2)
+
+  ctx.restore()
+}
+
+// --- Colored typographic: proportional serif with HSL color ---
+
+function renderColoredTypographicCell(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, size: number,
+  isDark: boolean,
+  structural: boolean,
+  contrastLevel: number,
+  table: CharTable,
+  row: number, col: number, totalSize: number,
+  theme: ColorTheme,
+  themeFunc: (r: number, c: number, t: number, d: boolean) => ThemeColor
+): void {
+  if (!isDark) return
+
+  if (structural) {
+    ctx.fillStyle = getStructuralColor(theme)
+    ctx.fillRect(x, y, size, size)
+    return
+  }
+
+  const { h, s, l } = themeFunc(row, col, totalSize, true)
   const targetDensity = contrastLevel
   const charInfo = findBestChar(table, targetDensity, size)
 
@@ -170,9 +264,7 @@ function renderTypographicCell(
   ctx.rect(x, y, size, size)
   ctx.clip()
 
-  // Brightness scales with contrast level
-  const brightness = Math.round(200 * contrastLevel + 55)
-  ctx.fillStyle = `rgb(${brightness}, ${brightness}, ${brightness})`
+  ctx.fillStyle = `hsl(${h}, ${s}%, ${l}%)`
   ctx.font = `${table.weight} ${table.fontSize}px ${table.font}`
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'center'
@@ -181,36 +273,36 @@ function renderTypographicCell(
   ctx.restore()
 }
 
-function renderCalligramCell(
+// --- Colored calligram: custom text with color ---
+
+function renderColoredCalligramCell(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, size: number,
   isDark: boolean,
   structural: boolean,
-  contrastLevel: number,
+  _contrastLevel: number,
   table: CharTable,
   text: string,
-  currentIndex: number
+  currentIndex: number,
+  row: number, col: number, totalSize: number,
+  theme: ColorTheme,
+  themeFunc: (r: number, c: number, t: number, d: boolean) => ThemeColor
 ): { nextIndex: number } {
-  // White background for calligram
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(x, y, size, size)
-
   if (!isDark) return { nextIndex: currentIndex }
 
   if (structural) {
-    ctx.fillStyle = '#000000'
+    ctx.fillStyle = getStructuralColor(theme)
     ctx.fillRect(x, y, size, size)
     return { nextIndex: currentIndex }
   }
 
-  // For calligram: fill the cell with a dark background at contrastLevel opacity,
-  // then render the character on top in a slightly different shade so text is visible
-  // but the cell reads as "dark" to the scanner
-  const bgBrightness = Math.round(255 * (1 - contrastLevel) * 0.3)
-  ctx.fillStyle = `rgb(${bgBrightness}, ${bgBrightness}, ${bgBrightness})`
+  const { h, s, l } = themeFunc(row, col, totalSize, true)
+
+  // Dark background tint for the cell (to ensure scanner sees "dark")
+  const bgL = Math.max(5, l * 0.15)
+  ctx.fillStyle = `hsl(${h}, ${Math.round(s * 0.3)}%, ${bgL}%)`
   ctx.fillRect(x, y, size, size)
 
-  // Get next character from the text
   const char = text[currentIndex % text.length]
   const nextIndex = (currentIndex + 1) % text.length
 
@@ -219,11 +311,9 @@ function renderCalligramCell(
   ctx.rect(x, y, size, size)
   ctx.clip()
 
-  // Render character slightly lighter than background so it's visible as texture
-  // Ensure at least 15 brightness units difference so text is always visible
-  const charBrightness = Math.min(bgBrightness + Math.max(40, 15), 120)
-  ctx.fillStyle = `rgb(${charBrightness}, ${charBrightness}, ${charBrightness})`
-  // Use a font size that fills the cell (87.5% to avoid clipping ascenders)
+  // Character slightly brighter than bg, with saturation
+  const charL = Math.min(bgL + 15, l * 0.4)
+  ctx.fillStyle = `hsl(${h}, ${s}%, ${charL}%)`
   const fontSize = Math.round(size * 0.875)
   ctx.font = `${table.weight} ${fontSize}px ${table.font}`
   ctx.textBaseline = 'middle'
@@ -245,13 +335,10 @@ function getTypographicTable(
   matrix: QRMatrix,
   tables: CharTables
 ): CharTable {
-  if (!isDark) return tables.typographic500 // doesn't matter, won't render
-
+  if (!isDark) return tables.typographic500
   if (structural) return tables.typographic800
-
-  // Weight by neighbor count
   const neighbors = countDarkNeighbors(row, col, matrix.modules)
-  if (neighbors >= 3) return tables.typographic800  // core
-  if (neighbors >= 1) return tables.typographic500  // edge
-  return tables.typographic300                      // isolated / transition
+  if (neighbors >= 3) return tables.typographic800
+  if (neighbors >= 1) return tables.typographic500
+  return tables.typographic300
 }

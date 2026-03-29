@@ -146,16 +146,65 @@ button:disabled {
 
 .canvas-wrapper {
   display: inline-block;
-  background: #000;
+  background: #0a0a0f;
   border: 1px solid #222;
-  border-radius: 8px;
-  padding: 1rem;
+  border-radius: 12px;
+  padding: 1.5rem;
   margin-bottom: 1rem;
+  transition: box-shadow 0.4s ease;
+}
+
+/* Bloom/glow effect per theme */
+.canvas-wrapper.glow-plasma {
+  box-shadow: 0 0 40px rgba(180, 80, 255, 0.25), 0 0 80px rgba(180, 80, 255, 0.1);
+}
+.canvas-wrapper.glow-matrix {
+  box-shadow: 0 0 40px rgba(0, 255, 60, 0.2), 0 0 80px rgba(0, 255, 60, 0.08);
+}
+.canvas-wrapper.glow-lava {
+  box-shadow: 0 0 40px rgba(255, 100, 20, 0.25), 0 0 80px rgba(255, 60, 0, 0.1);
+}
+.canvas-wrapper.glow-aurora {
+  box-shadow: 0 0 40px rgba(0, 220, 180, 0.2), 0 0 80px rgba(100, 180, 255, 0.1);
+}
+.canvas-wrapper.glow-mono {
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.08);
 }
 
 canvas {
   display: block;
   image-rendering: pixelated;
+}
+
+/* Theme-colored radio buttons */
+.theme-group {
+  flex-wrap: wrap;
+}
+
+.theme-plasma input:checked + span {
+  border-color: hsl(280, 100%, 75%) !important;
+  color: hsl(280, 100%, 85%) !important;
+  background: hsla(280, 100%, 50%, 0.15) !important;
+}
+.theme-matrix input:checked + span {
+  border-color: hsl(120, 100%, 70%) !important;
+  color: hsl(120, 100%, 80%) !important;
+  background: hsla(120, 100%, 40%, 0.15) !important;
+}
+.theme-lava input:checked + span {
+  border-color: hsl(25, 100%, 60%) !important;
+  color: hsl(25, 100%, 80%) !important;
+  background: hsla(25, 100%, 40%, 0.15) !important;
+}
+.theme-aurora input:checked + span {
+  border-color: hsl(160, 90%, 60%) !important;
+  color: hsl(160, 90%, 80%) !important;
+  background: hsla(160, 90%, 40%, 0.15) !important;
+}
+.theme-mono input:checked + span {
+  border-color: #888 !important;
+  color: #ccc !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 .export-buttons {

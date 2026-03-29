@@ -1,9 +1,9 @@
 import './styles.css'
-import type { Style } from './types'
+import type { Style, ColorTheme, CharTables } from './types'
 import { MAX_URL_LENGTH } from './types'
 import { generateQRMatrix } from './qr'
 import { buildCharTables } from './chars'
-import { generateAndVerify } from './verify'
+import { generateAndVerify, initDetector } from './verify'
 
 // DOM elements
 const urlInput = document.getElementById('url-input') as HTMLInputElement
@@ -13,16 +13,41 @@ const generateBtn = document.getElementById('generate-btn') as HTMLButtonElement
 const outputArea = document.getElementById('output-area') as HTMLDivElement
 const statusEl = document.getElementById('status') as HTMLDivElement
 const canvas = document.getElementById('qr-canvas') as HTMLCanvasElement
+const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLDivElement
 const copyBtn = document.getElementById('copy-btn') as HTMLButtonElement
 const downloadBtn = document.getElementById('download-btn') as HTMLButtonElement
 
 let currentStyle: Style = 'classic'
+let currentTheme: ColorTheme = 'plasma'
+
+// Pre-initialize expensive resources on page load
+// BarcodeDetector WASM init + char table measurement happen once, reused across generates
+let cachedTables: CharTables | null = null
+const MODULE_SIZE = 20
+const FONT_SIZE = 17
+
+async function ensureInitialized(): Promise<CharTables> {
+  if (!cachedTables) {
+    cachedTables = await buildCharTables(FONT_SIZE)
+  }
+  return cachedTables
+}
+
+// Eagerly init detector and char tables on page load
+void Promise.all([initDetector(), ensureInitialized()])
 
 // Style radio buttons
 document.querySelectorAll<HTMLInputElement>('input[name="style"]').forEach((radio) => {
   radio.addEventListener('change', () => {
     currentStyle = radio.value as Style
     calligramInputGroup.style.display = currentStyle === 'calligram' ? 'flex' : 'none'
+  })
+})
+
+// Color theme radio buttons
+document.querySelectorAll<HTMLInputElement>('input[name="theme"]').forEach((radio) => {
+  radio.addEventListener('change', () => {
+    currentTheme = radio.value as ColorTheme
   })
 })
 
@@ -41,12 +66,15 @@ generateBtn.addEventListener('click', async () => {
 
   generateBtn.disabled = true
   outputArea.style.display = 'block'
+  // Apply glow effect matching the selected theme
+  canvasWrapper.className = `canvas-wrapper glow-${currentTheme}`
   setStatus('Generating...', 'generating')
+
+  const t0 = performance.now()
 
   try {
     const matrix = generateQRMatrix(url)
-    const moduleSize = 16
-    const tables = await buildCharTables(14)
+    const tables = await ensureInitialized()
 
     const result = await generateAndVerify(
       canvas,
@@ -55,19 +83,22 @@ generateBtn.addEventListener('click', async () => {
       url,
       currentStyle,
       currentStyle === 'calligram' ? calligramText.value : undefined,
-      moduleSize,
+      MODULE_SIZE,
       setStatus,
+      currentTheme,
     )
+
+    const elapsed = Math.round(performance.now() - t0)
 
     if (result.scans) {
       if (result.fellBack) {
         setStatus(
-          `Fell back to classic mode for reliable scanning (${result.attempts} attempts)`,
+          `Fell back to classic mode for reliable scanning (${result.attempts} attempts, ${elapsed}ms)`,
           'fallback'
         )
       } else {
         setStatus(
-          `Scannable (attempt ${result.attempts}, contrast ${Math.round(result.contrastLevel * 100)}%)`,
+          `Scannable (attempt ${result.attempts}, contrast ${Math.round(result.contrastLevel * 100)}%, ${elapsed}ms)`,
           'success'
         )
       }

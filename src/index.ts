@@ -7,12 +7,12 @@
  * Note: This library requires a browser environment (DOM, Canvas, BarcodeDetector).
  */
 
-export type { Style, GenerateOptions, GenerateResult, QRMatrix, CharInfo, CharTable, CharTables } from './types'
+export type { Style, ColorTheme, GenerateOptions, GenerateResult, QRMatrix, CharInfo, CharTable, CharTables } from './types'
 export { MAX_URL_LENGTH } from './types'
 export { generateQRMatrix } from './qr'
 export { buildCharTables, findBestChar } from './chars'
 export { renderQR, renderReferenceQR } from './renderer'
-export { generateAndVerify } from './verify'
+export { generateAndVerify, initDetector } from './verify'
 
 import type { GenerateOptions, GenerateResult } from './types'
 import { MAX_URL_LENGTH } from './types'
@@ -37,7 +37,7 @@ import { generateAndVerify } from './verify'
  * ```
  */
 export async function generateAsciiQR(options: GenerateOptions): Promise<GenerateResult> {
-  const { url, style, calligramText, canvas, moduleSize } = options
+  const { url, style, calligramText, canvas, moduleSize, colorTheme } = options
 
   if (url.length > MAX_URL_LENGTH) {
     throw new Error(`URL too long (${url.length} chars). Maximum is ${MAX_URL_LENGTH} for QR code version 40-H.`)
@@ -56,6 +56,8 @@ export async function generateAsciiQR(options: GenerateOptions): Promise<Generat
     style,
     calligramText,
     moduleSize,
+    undefined, // onStatus
+    colorTheme,
   )
 
   return {

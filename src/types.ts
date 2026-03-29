@@ -1,5 +1,8 @@
 export type Style = 'classic' | 'typographic' | 'calligram'
 
+/** Color themes inspired by textflow */
+export type ColorTheme = 'plasma' | 'matrix' | 'lava' | 'aurora' | 'mono'
+
 export interface QRMatrix {
   /** 2D boolean grid: true = dark module */
   modules: boolean[][]
@@ -32,6 +35,7 @@ export interface RenderOptions {
   calligramText?: string
   moduleSize?: number
   debug?: boolean
+  colorTheme?: ColorTheme
 }
 
 export interface VerifyResult {
@@ -48,6 +52,7 @@ export interface GenerateOptions {
   calligramText?: string
   canvas: HTMLCanvasElement
   moduleSize?: number
+  colorTheme?: ColorTheme
 }
 
 export interface GenerateResult {

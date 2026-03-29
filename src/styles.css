@@ -243,6 +243,49 @@ canvas {
   background: rgba(255, 255, 255, 0.08) !important;
 }
 
+/* Logo upload */
+.logo-upload-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.logo-upload-btn {
+  flex: 1;
+  cursor: pointer;
+  display: block;
+  text-align: center;
+  padding: 0.6rem 1rem;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #888;
+  transition: all 0.2s;
+}
+
+.logo-upload-btn:hover {
+  border-color: #555;
+  color: #ccc;
+}
+
+.logo-upload-btn.has-logo {
+  border-color: #4ade80;
+  color: #4ade80;
+}
+
+.logo-upload-btn input[type="file"] {
+  display: none;
+}
+
+.logo-clear-btn {
+  background: #222 !important;
+  color: #888 !important;
+  font-size: 0.8rem !important;
+  padding: 0.6rem 0.8rem !important;
+  flex-shrink: 0;
+}
+
 .export-buttons {
   display: flex;
   gap: 0.5rem;

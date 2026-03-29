@@ -16,9 +16,14 @@ const canvas = document.getElementById('qr-canvas') as HTMLCanvasElement
 const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLDivElement
 const copyBtn = document.getElementById('copy-btn') as HTMLButtonElement
 const downloadBtn = document.getElementById('download-btn') as HTMLButtonElement
+const logoInput = document.getElementById('logo-input') as HTMLInputElement
+const logoLabel = document.getElementById('logo-label') as HTMLSpanElement
+const logoClearBtn = document.getElementById('logo-clear') as HTMLButtonElement
+const logoUploadBtn = document.querySelector('.logo-upload-btn') as HTMLLabelElement
 
 let currentStyle: Style = 'classic'
 let currentTheme: ColorTheme = 'plasma'
+let currentLogo: ImageBitmap | null = null
 
 // Pre-initialize expensive resources on page load
 // BarcodeDetector WASM init + char table measurement happen once, reused across generates
@@ -49,6 +54,30 @@ document.querySelectorAll<HTMLInputElement>('input[name="theme"]').forEach((radi
   radio.addEventListener('change', () => {
     currentTheme = radio.value as ColorTheme
   })
+})
+
+// Logo upload
+logoInput.addEventListener('change', async () => {
+  const file = logoInput.files?.[0]
+  if (!file) return
+  try {
+    currentLogo = await createImageBitmap(file)
+    logoLabel.textContent = file.name.length > 20 ? file.name.slice(0, 17) + '...' : file.name
+    logoUploadBtn.classList.add('has-logo')
+    logoClearBtn.style.display = 'block'
+  } catch {
+    logoLabel.textContent = 'Invalid image'
+    currentLogo = null
+  }
+})
+
+logoClearBtn.addEventListener('click', () => {
+  currentLogo?.close()
+  currentLogo = null
+  logoInput.value = ''
+  logoLabel.textContent = 'Choose Image'
+  logoUploadBtn.classList.remove('has-logo')
+  logoClearBtn.style.display = 'none'
 })
 
 // Generate button
@@ -86,6 +115,7 @@ generateBtn.addEventListener('click', async () => {
       MODULE_SIZE,
       setStatus,
       currentTheme,
+      currentLogo ?? undefined,
     )
 
     const elapsed = Math.round(performance.now() - t0)

@@ -36,6 +36,10 @@ export interface RenderOptions {
   moduleSize?: number
   debug?: boolean
   colorTheme?: ColorTheme
+  /** Logo image to embed in the center of the QR code */
+  logoImage?: ImageBitmap
+  /** Logo size as fraction of QR code (0-0.25, default 0.2) */
+  logoScale?: number
 }
 
 export interface VerifyResult {

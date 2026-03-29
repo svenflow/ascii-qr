@@ -126,6 +126,11 @@ export function renderQR(
       }
     }
   }
+
+  // Draw logo overlay in center if provided
+  if (options.logoImage) {
+    drawLogoOverlay(ctx, canvasSize, options.logoImage, options.logoScale ?? 0.2, theme)
+  }
 }
 
 /**
@@ -341,4 +346,55 @@ function getTypographicTable(
   if (neighbors >= 3) return tables.typographic800
   if (neighbors >= 1) return tables.typographic500
   return tables.typographic300
+}
+
+// --- Logo overlay ---
+
+function drawLogoOverlay(
+  ctx: CanvasRenderingContext2D,
+  canvasSize: number,
+  logo: ImageBitmap,
+  scale: number,
+  theme: ColorTheme
+): void {
+  const logoSize = Math.round(canvasSize * Math.min(scale, 0.25))
+  const x = Math.round((canvasSize - logoSize) / 2)
+  const y = Math.round((canvasSize - logoSize) / 2)
+
+  // Background pad with rounded corners
+  const pad = Math.round(logoSize * 0.12)
+  const bgX = x - pad
+  const bgY = y - pad
+  const bgSize = logoSize + pad * 2
+  const radius = Math.round(bgSize * 0.15)
+
+  // Dark or light background depending on theme
+  const isDarkTheme = theme !== 'mono'
+  ctx.fillStyle = isDarkTheme ? '#0a0a0f' : '#ffffff'
+
+  ctx.beginPath()
+  ctx.roundRect(bgX, bgY, bgSize, bgSize, radius)
+  ctx.fill()
+
+  // Optional subtle border
+  ctx.strokeStyle = isDarkTheme ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+  ctx.lineWidth = 1
+  ctx.stroke()
+
+  // Draw the logo image, maintaining aspect ratio
+  const aspect = logo.width / logo.height
+  let drawW = logoSize
+  let drawH = logoSize
+  if (aspect > 1) {
+    drawH = logoSize / aspect
+  } else {
+    drawW = logoSize * aspect
+  }
+  const drawX = x + (logoSize - drawW) / 2
+  const drawY = y + (logoSize - drawH) / 2
+
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(logo, drawX, drawY, drawW, drawH)
+  ctx.imageSmoothingEnabled = false
 }

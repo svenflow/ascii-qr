@@ -58,6 +58,7 @@ export async function generateAndVerify(
   moduleSize?: number,
   onStatus?: (status: string, className: string) => void,
   colorTheme?: ColorTheme,
+  logoImage?: ImageBitmap,
 ): Promise<VerifyResult> {
   const debug = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).has('debug')
@@ -78,6 +79,7 @@ export async function generateAndVerify(
       moduleSize,
       debug,
       colorTheme,
+      logoImage,
     })
 
     onStatus?.('Verifying scan...', 'verifying')
@@ -104,6 +106,7 @@ export async function generateAndVerify(
       moduleSize,
       debug,
       colorTheme,
+      logoImage,
     })
 
     const scans = await scanCanvas(canvas, url)

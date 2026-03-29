@@ -24,7 +24,7 @@ export function generateQRMatrix(url: string): QRMatrix {
       } else {
         rowData.push(false) // quiet zone = light
       }
-      }
+    }
     modules.push(rowData)
   }
 

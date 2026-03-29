@@ -44,7 +44,9 @@ export async function generateAsciiQR(options: GenerateOptions): Promise<Generat
   }
 
   const matrix = generateQRMatrix(url)
-  const tables = await buildCharTables(moduleSize ? Math.round(moduleSize * 0.875) : 14)
+  // Font size is 87.5% of module size to avoid clipping ascenders/descenders
+  const fontSize = moduleSize ? Math.round(moduleSize * 0.875) : 14
+  const tables = await buildCharTables(fontSize)
 
   const result = await generateAndVerify(
     canvas,

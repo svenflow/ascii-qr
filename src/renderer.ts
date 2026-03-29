@@ -4,6 +4,12 @@ import { findBestChar } from './chars'
 
 const DEFAULT_MODULE_SIZE = 16
 
+function getContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+  const ctx = canvas.getContext('2d', { willReadFrequently: false })
+  if (!ctx) throw new Error('Could not get 2D canvas context — is this a valid canvas element?')
+  return ctx
+}
+
 /**
  * Render a QR matrix as ASCII art onto a canvas.
  */
@@ -20,7 +26,7 @@ export function renderQR(
   canvas.width = canvasSize
   canvas.height = canvasSize
 
-  const ctx = canvas.getContext('2d')!
+  const ctx = getContext(canvas)
   ctx.imageSmoothingEnabled = false
 
   // Fill background
@@ -81,7 +87,7 @@ export function renderReferenceQR(
   canvas.width = canvasSize
   canvas.height = canvasSize
 
-  const ctx = canvas.getContext('2d')!
+  const ctx = getContext(canvas)
   ctx.imageSmoothingEnabled = false
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, canvasSize, canvasSize)
@@ -181,7 +187,7 @@ function renderCalligramCell(
   isDark: boolean,
   structural: boolean,
   contrastLevel: number,
-  _table: CharTable,
+  table: CharTable,
   text: string,
   currentIndex: number
 ): { nextIndex: number } {
@@ -214,11 +220,12 @@ function renderCalligramCell(
   ctx.clip()
 
   // Render character slightly lighter than background so it's visible as texture
-  const charBrightness = Math.min(bgBrightness + 40, Math.round(255 * (1 - contrastLevel) * 0.7))
+  // Ensure at least 15 brightness units difference so text is always visible
+  const charBrightness = Math.min(bgBrightness + Math.max(40, 15), 120)
   ctx.fillStyle = `rgb(${charBrightness}, ${charBrightness}, ${charBrightness})`
-  // Use a font size that fills the cell
-  const fontSize = Math.round(size * 0.9)
-  ctx.font = `800 ${fontSize}px Georgia, serif`
+  // Use a font size that fills the cell (87.5% to avoid clipping ascenders)
+  const fontSize = Math.round(size * 0.875)
+  ctx.font = `${table.weight} ${fontSize}px ${table.font}`
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'center'
   ctx.fillText(char, x + size / 2, y + size / 2)

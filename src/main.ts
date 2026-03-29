@@ -99,6 +99,8 @@ copyBtn.addEventListener('click', async () => {
     setTimeout(() => { copyBtn.textContent = 'Copy to Clipboard' }, 2000)
   } catch (e) {
     console.error('Copy failed:', e)
+    copyBtn.textContent = 'Copy failed'
+    setTimeout(() => { copyBtn.textContent = 'Copy to Clipboard' }, 2000)
   }
 })
 

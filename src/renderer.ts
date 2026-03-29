@@ -398,26 +398,39 @@ function renderMosaicCell(
   const pixel = mosaicData[row]?.[col] ?? { brightness: 0.5, r: 128, g: 128, b: 128 }
 
   if (!isDark) {
-    // Light module: use photo color at low opacity for a subtle tint
-    const tintAlpha = 0.08
-    ctx.fillStyle = `rgba(${pixel.r}, ${pixel.g}, ${pixel.b}, ${tintAlpha})`
+    // Light module: bright fill so scanner sees "white"
+    // Use a brightened version of the photo color
+    const lightR = Math.min(255, Math.round(pixel.r * 0.3 + 180))
+    const lightG = Math.min(255, Math.round(pixel.g * 0.3 + 180))
+    const lightB = Math.min(255, Math.round(pixel.b * 0.3 + 180))
+    ctx.fillStyle = `rgb(${lightR}, ${lightG}, ${lightB})`
     ctx.fillRect(x, y, size, size)
     return
   }
 
   if (structural) {
-    // Structural modules: use photo color but keep strong contrast
-    const structR = Math.round(pixel.r * 0.7 + 80)
-    const structG = Math.round(pixel.g * 0.7 + 80)
-    const structB = Math.round(pixel.b * 0.7 + 80)
+    // Structural modules: solid dark with photo color tint
+    const structR = Math.round(pixel.r * 0.3 + 20)
+    const structG = Math.round(pixel.g * 0.3 + 20)
+    const structB = Math.round(pixel.b * 0.3 + 20)
     ctx.fillStyle = `rgb(${structR}, ${structG}, ${structB})`
     ctx.fillRect(x, y, size, size)
     return
   }
 
-  // Pick character from density ramp based on photo brightness
-  // Dark photo areas → dense chars, light areas → sparse chars
-  const density = (1 - pixel.brightness) * contrastLevel
+  // Dark background fill — scanner needs this to be dark
+  // Use a dimmed version of the photo color as background
+  const bgR = Math.round(pixel.r * 0.08)
+  const bgG = Math.round(pixel.g * 0.08)
+  const bgB = Math.round(pixel.b * 0.08)
+  ctx.fillStyle = `rgb(${bgR}, ${bgG}, ${bgB})`
+  ctx.fillRect(x, y, size, size)
+
+  // Pick character from density ramp — minimum density ensures scannability
+  // Photo brightness modulates which char, but always at least medium density
+  const minDensity = 0.4 * contrastLevel
+  const photoDensity = (1 - pixel.brightness) * contrastLevel
+  const density = Math.max(minDensity, photoDensity)
   const charIdx = Math.floor(density * (RAMP_DENSE.length - 1))
   const char = RAMP_DENSE[Math.min(charIdx, RAMP_DENSE.length - 1)]
 
@@ -426,8 +439,8 @@ function renderMosaicCell(
   ctx.rect(x, y, size, size)
   ctx.clip()
 
-  // Use the photo's actual color for the character
-  const lumBoost = 1.2 // Slightly brighter for visibility
+  // Character in photo color, slightly boosted for vibrancy
+  const lumBoost = 1.5
   const cr = Math.min(255, Math.round(pixel.r * lumBoost))
   const cg = Math.min(255, Math.round(pixel.g * lumBoost))
   const cb = Math.min(255, Math.round(pixel.b * lumBoost))

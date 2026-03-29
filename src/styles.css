@@ -190,21 +190,48 @@ button:disabled {
   transition: box-shadow 0.4s ease;
 }
 
-/* Bloom/glow effect per theme */
+/* Bloom/glow effect per theme — animated pulse */
 .canvas-wrapper.glow-plasma {
-  box-shadow: 0 0 40px rgba(180, 80, 255, 0.25), 0 0 80px rgba(180, 80, 255, 0.1);
+  animation: glowPulse-plasma 3s ease-in-out infinite;
 }
 .canvas-wrapper.glow-matrix {
-  box-shadow: 0 0 40px rgba(0, 255, 60, 0.2), 0 0 80px rgba(0, 255, 60, 0.08);
+  animation: glowPulse-matrix 3s ease-in-out infinite;
 }
 .canvas-wrapper.glow-lava {
-  box-shadow: 0 0 40px rgba(255, 100, 20, 0.25), 0 0 80px rgba(255, 60, 0, 0.1);
+  animation: glowPulse-lava 3s ease-in-out infinite;
 }
 .canvas-wrapper.glow-aurora {
-  box-shadow: 0 0 40px rgba(0, 220, 180, 0.2), 0 0 80px rgba(100, 180, 255, 0.1);
+  animation: glowPulse-aurora 3s ease-in-out infinite;
 }
 .canvas-wrapper.glow-mono {
   box-shadow: 0 0 30px rgba(255, 255, 255, 0.08);
+}
+
+@keyframes glowPulse-plasma {
+  0%, 100% { box-shadow: 0 0 30px rgba(180, 80, 255, 0.2), 0 0 60px rgba(180, 80, 255, 0.08); }
+  50% { box-shadow: 0 0 50px rgba(180, 80, 255, 0.35), 0 0 100px rgba(180, 80, 255, 0.15); }
+}
+@keyframes glowPulse-matrix {
+  0%, 100% { box-shadow: 0 0 30px rgba(0, 255, 60, 0.15), 0 0 60px rgba(0, 255, 60, 0.06); }
+  50% { box-shadow: 0 0 50px rgba(0, 255, 60, 0.3), 0 0 100px rgba(0, 255, 60, 0.12); }
+}
+@keyframes glowPulse-lava {
+  0%, 100% { box-shadow: 0 0 30px rgba(255, 100, 20, 0.2), 0 0 60px rgba(255, 60, 0, 0.08); }
+  50% { box-shadow: 0 0 50px rgba(255, 100, 20, 0.35), 0 0 100px rgba(255, 60, 0, 0.15); }
+}
+@keyframes glowPulse-aurora {
+  0%, 100% { box-shadow: 0 0 30px rgba(0, 220, 180, 0.15), 0 0 60px rgba(100, 180, 255, 0.08); }
+  50% { box-shadow: 0 0 50px rgba(0, 220, 180, 0.3), 0 0 100px rgba(100, 180, 255, 0.15); }
+}
+
+/* Subtle canvas hue shift animation for colored themes */
+.canvas-wrapper:not(.glow-mono) canvas {
+  animation: hueShimmer 8s ease-in-out infinite;
+}
+
+@keyframes hueShimmer {
+  0%, 100% { filter: hue-rotate(0deg) brightness(1); }
+  50% { filter: hue-rotate(8deg) brightness(1.03); }
 }
 
 canvas {
